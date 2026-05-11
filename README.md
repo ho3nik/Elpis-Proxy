@@ -36,7 +36,20 @@ This means the filter sees normal-looking Google traffic, while the actual desti
 
 ## How to Use
 
-### 1 - Download project and extract 
+### ✨ New: Graphical Interface & Windows EXE
+
+If you prefer not to use the terminal, you can use the built-in GUI which includes auto-setup, configuration management, log exporting, and crash reporting.
+
+- **Windows Users (Easiest Method):** 
+  Go to the **Actions** tab on your GitHub repository, click on the latest successful "Build Windows EXE" workflow, and download the `Elpis-Windows-EXE` artifact at the bottom. This is a single, standalone file that requires zero installation!
+- **Mac Users:**
+  Download the project, open the folder, and double-click `Elpis.command`. It will automatically install requirements and launch the GUI.
+
+---
+
+### Method 2: Manual Terminal Setup
+
+#### 1 - Download project and extract 
 
 ```bash
 git clone https://github.com/denuitt1/mhr-cfw.git
