@@ -68,13 +68,13 @@ CACHE_TTL_MAX           = 86400  # hard cap on any explicit max-age
 POOL_MAX                = 50
 POOL_MIN_IDLE           = 15
 CONN_TTL                = 45.0
-SEMAPHORE_MAX           = 50
+SEMAPHORE_MAX           = 80
 WARM_POOL_COUNT         = 30
 
 
 # ── Batch windows ─────────────────────────────────────────────────────────
-BATCH_WINDOW_MICRO      = 0.005   # 5 ms
-BATCH_WINDOW_MACRO      = 0.050   # 50 ms
+BATCH_WINDOW_MICRO      = 0.003   
+BATCH_WINDOW_MACRO      = 0.050   
 BATCH_MAX               = 50
 
 
@@ -102,7 +102,7 @@ FRONT_SNI_POOL_GOOGLE: tuple[str, ...] = (
     # "translate.google.com",
     # "play.google.com",
     # "lens.google.com",
-    # "scholar.google.com",
+    "scholar.google.com",
     # "chromewebstore.google.com",
 )
 

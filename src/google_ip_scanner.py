@@ -192,3 +192,7 @@ def scan_sync(front_domain: str) -> bool:
     except Exception as e:
         log.error(f"Scan failed: {e}")
         return False
+
+if __name__ == "__main__":
+    # Replace with the SNI hostname you want to use (e.g., "www.google.com")
+    scan_sync("www.google.com")

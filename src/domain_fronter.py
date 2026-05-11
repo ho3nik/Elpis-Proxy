@@ -49,6 +49,20 @@ from constants import (
 
 log = logging.getLogger("Fronter")
 
+DEFAULT_BROWSER_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-User': '?1',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
+    'Sec-Ch-Ua-Mobile': '?0',
+    'Sec-Ch-Ua-Platform': '"Windows"',
+    'Upgrade-Insecure-Requests': '1',
+}
+
 
 @dataclass
 class HostStat:
@@ -130,6 +144,8 @@ class DomainFronter:
             self._parallel_relay = 1
         self._parallel_relay = max(1, min(self._parallel_relay,
                                           len(self._script_ids)))
+        # Script selection strategy: sticky per host (true) or round‑robin (false)
+        self._sticky_scripts = config.get("sticky_scripts", True)
         self._sid_blacklist: dict[str, float] = {}
         self._blacklist_ttl = SCRIPT_BLACKLIST_TTL
 
@@ -665,22 +681,13 @@ class DomainFronter:
                 break
             except Exception as e:
                 log.debug("Stats logger error: %s", e)
-
+        
     def _script_id_for_key(self, key: str | None = None) -> str:
-        """Pick a stable Apps Script ID for a host or fallback to round-robin.
-
-        When multiple deployments are configured, using a stable mapping per
-        host reduces IP/session churn for sites that are sensitive to endpoint
-        changes. If no key is available, we keep the older round-robin fallback
-        so warmup/keepalive traffic still distributes normally.
-
-        Blacklisted IDs are skipped by probing forward in the list until a
-        healthy one is found; if none, the stable pick is returned anyway.
-        """
-        if len(self._script_ids) == 1:
-            return self._script_ids[0]
-        if not key:
+    
+        if not self._sticky_scripts or len(self._script_ids) == 1 or not key:
             return self._next_script_id()
+
+        # Sticky: hash the host to a stable script ID, skipping blacklisted ones.
         digest = hashlib.sha1(key.encode("utf-8")).digest()
         base = int.from_bytes(digest[:4], "big") % len(self._script_ids)
         n = len(self._script_ids)
@@ -689,7 +696,7 @@ class DomainFronter:
             if not self._is_sid_blacklisted(sid):
                 return sid
         return self._script_ids[base]
-
+    
     def _exec_path(self, url_or_host: str | None = None) -> str:
         """Get the Apps Script endpoint path (/dev or /exec)."""
         sid = self._script_id_for_key(self._host_key(url_or_host))
@@ -698,6 +705,7 @@ class DomainFronter:
     def _exec_path_for_sid(self, sid: str) -> str:
         """Build the /macros/s/<sid>/(dev|exec) path for a specific script ID."""
         return f"/macros/s/{sid}/{'dev' if self._dev_available else 'exec'}"
+
     async def _flush_pool(self):
         """Close all pooled connections (they may be stale after errors)."""
         async with self._pool_lock:
@@ -1501,15 +1509,25 @@ class DomainFronter:
         payload = {
             "m": method,
             "u": url,
-            # Let the browser/app see origin redirects and cookies directly.
             "r": False,
         }
+        
+        enhanced_headers = DEFAULT_BROWSER_HEADERS.copy()
+        
         if headers:
-            # Strip headers that would leak the user's real IP or expose
-            # internal proxy metadata to the upstream destination server.
-            filt = {k: v for k, v in headers.items()
-                    if k.lower() not in self._STRIP_HEADERS}
-            payload["h"] = filt if filt else headers
+            # Pre-calculate keys that belong to the unified fingerprint
+            fingerprint_keys = {k.lower() for k in DEFAULT_BROWSER_HEADERS.keys()}
+            
+            # Filter out stripped headers AND prevent mismatch injection
+            filt = {
+                k: v for k, v in headers.items()
+                if k.lower() not in self._STRIP_HEADERS
+                and k.lower() not in fingerprint_keys 
+            }
+            enhanced_headers.update(filt)
+        
+        payload["h"] = enhanced_headers
+        
         if body:
             payload["b"] = base64.b64encode(body).decode()
             ct = headers.get("Content-Type") or headers.get("content-type")
@@ -1668,20 +1686,21 @@ class DomainFronter:
         # Fan-out: race N Apps Script instances when enabled and H2 is up.
         # Cuts tail latency when one container is slow/cold. Only kicks in
         # if multiple script IDs are configured and the H2 transport is live.
-        if (attempts > 1
-                and self._parallel_relay > 1
-                and len(self._script_ids) > 1
-                and self._h2_available()):
-            try:
-                result = await asyncio.wait_for(
-                    self._relay_fanout(payload), timeout=self._relay_timeout,
-                )
-                self._record_h2_success()
-                return result
-            except Exception as e:
-                self._record_h2_failure(e)
-                log.debug("Fan-out relay failed (%s), falling back", e)
-                # fall through to single-path logic below
+        # FAN-OUT DISABLED TO PREVENT ERROR 502 BAD JSON
+        # if (attempts > 1
+        #         and self._parallel_relay > 1
+        #         and len(self._script_ids) > 1
+        #         and self._h2_available()):
+        #     try:
+        #         result = await asyncio.wait_for(
+        #             self._relay_fanout(payload), timeout=self._relay_timeout,
+        #         )
+        #         self._record_h2_success()
+        #         return result
+        #     except Exception as e:
+        #         self._record_h2_failure(e)
+        #         log.debug("Fan-out relay failed (%s), falling back", e)
+        #         # fall through to single-path logic below
 
         # Try HTTP/2 first — much faster (multiplexed, no pool checkout)
         if self._h2_available():
