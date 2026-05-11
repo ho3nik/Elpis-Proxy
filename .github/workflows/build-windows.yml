@@ -26,7 +26,7 @@ jobs:
 
     - name: Build EXE with PyInstaller
       run: |
-        pyinstaller --noconfirm --windowed --onefile --name "Elpis" --add-data "src;src" --add-data "ca;ca" gui.py
+        pyinstaller --noconfirm --windowed --onefile --name "Elpis" --add-data "src;src" gui.py
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
