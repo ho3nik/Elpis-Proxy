@@ -321,9 +321,9 @@ def _is_trusted_linux(cert_path: str, cert_name: str = CERT_NAME) -> bool:
 
 def _install_firefox(cert_path: str, cert_name: str):
     """Install into all detected Firefox profile NSS databases."""
-    if not _has_cmd("certutil"):
-        log.debug("NSS certutil not found — skipping Firefox install.")
-        return
+    has_certutil = _has_cmd("certutil")
+    if not has_certutil:
+        log.debug("NSS certutil not found — will only try to enable enterprise roots pref.")
 
     profile_dirs: list[str] = []
     system = platform.system()
@@ -347,18 +347,39 @@ def _install_firefox(cert_path: str, cert_name: str):
         return
 
     for profile in profile_dirs:
-        db = f"sql:{profile}" if os.path.exists(os.path.join(profile, "cert9.db")) else f"dbm:{profile}"
         try:
-            # Remove old entry first (ignore errors)
-            _run(["certutil", "-D", "-n", cert_name, "-d", db], check=False)
-            _run([
-                "certutil", "-A",
-                "-n", cert_name,
-                "-t", "CT,,",
-                "-i", cert_path,
-                "-d", db,
-            ])
-            log.info("Installed in Firefox profile: %s", os.path.basename(profile))
+            if has_certutil:
+                db = f"sql:{profile}" if os.path.exists(os.path.join(profile, "cert9.db")) else f"dbm:{profile}"
+                # Remove old entry first (ignore errors)
+                _run(["certutil", "-D", "-n", cert_name, "-d", db], check=False)
+                _run([
+                    "certutil", "-A",
+                    "-n", cert_name,
+                    "-t", "CT,,",
+                    "-i", cert_path,
+                    "-d", db,
+                ])
+                log.info("Installed in Firefox NSS DB: %s", os.path.basename(profile))
+            
+            # Enable system root trust in Firefox
+            prefs_js = os.path.join(profile, "prefs.js")
+            pref_line = 'user_pref("security.enterprise_roots.enabled", true);'
+            try:
+                if os.path.exists(prefs_js):
+                    with open(prefs_js, "r") as f:
+                        lines = f.readlines()
+                    if not any("security.enterprise_roots.enabled" in line for line in lines):
+                        with open(prefs_js, "a") as f:
+                            f.write(f"\n{pref_line}\n")
+                        log.info("Enabled system root trust in Firefox profile: %s", os.path.basename(profile))
+                else:
+                    with open(prefs_js, "w") as f:
+                        f.write(f"{pref_line}\n")
+                    log.info("Created prefs.js with system root trust in Firefox profile: %s", os.path.basename(profile))
+            except Exception as e:
+                log.warning("Failed to set Firefox pref: %s", e)
+
+            log.info("Completed Firefox profile setup: %s", os.path.basename(profile))
         except (subprocess.CalledProcessError, FileNotFoundError) as exc:
             log.warning("Firefox profile %s: %s", os.path.basename(profile), exc)
 

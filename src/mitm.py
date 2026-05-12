@@ -15,6 +15,7 @@ import logging
 import os
 import re
 import ssl
+import sys
 import tempfile
 
 from cryptography import x509
@@ -28,7 +29,14 @@ log = logging.getLogger("MITM")
 # The installed trusted root was generated there; keep using it.
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 _PROJECT_ROOT = os.path.dirname(_THIS_DIR)
-CA_DIR = os.path.join(_PROJECT_ROOT, "ca")
+
+if getattr(sys, 'frozen', False):
+    # When bundled, keep CA files next to the EXE, not in the temp folder
+    _DATA_ROOT = os.path.dirname(sys.executable)
+else:
+    _DATA_ROOT = _PROJECT_ROOT
+
+CA_DIR = os.path.join(_DATA_ROOT, "ca")
 CA_KEY_FILE = os.path.join(CA_DIR, "ca.key")
 CA_CERT_FILE = os.path.join(CA_DIR, "ca.crt")
 

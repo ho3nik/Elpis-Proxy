@@ -29,10 +29,22 @@ except ImportError:
 CRASH_EMAIL = "rahaajeagar@gmail.com"
 # Removed automated email reporting as per user request.
 
-HERE = Path(__file__).resolve().parent
-CONFIG_PATH = HERE / "config.json"
-MAIN_SCRIPT = HERE / "proxy_logic.py"
-REQUIREMENTS = HERE / "requirements.txt"
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
+
+if getattr(sys, 'frozen', False):
+    DATA_DIR = Path(sys.executable).parent
+    BUNDLE_DIR = Path(sys._MEIPASS)
+else:
+    DATA_DIR = Path(__file__).resolve().parent
+    BUNDLE_DIR = DATA_DIR
+
+HERE = BUNDLE_DIR
+CONFIG_PATH = DATA_DIR / "config.json"
+MAIN_SCRIPT = BUNDLE_DIR / "proxy_logic.py"
+REQUIREMENTS = BUNDLE_DIR / "requirements.txt"
 
 
 def _find_python():
@@ -659,6 +671,8 @@ if __name__ == "__main__":
     multiprocessing.freeze_support()
     
     # Auto-install dependencies before GUI opens (only if not frozen)
-    _auto_install_deps()
+    if not getattr(sys, 'frozen', False):
+        _auto_install_deps()
+        
     app = ElpisGUI()
     app.mainloop()
