@@ -9,7 +9,6 @@ Usage:
     install_ca("/path/to/ca.crt", cert_name="mhr-cfw")
 """
 
-import glob
 import logging
 import os
 import platform
@@ -17,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 log = logging.getLogger("Cert")
 
@@ -330,12 +330,17 @@ def _install_firefox(cert_path: str, cert_name: str):
 
     if system == "Windows":
         appdata = os.environ.get("APPDATA", "")
-        profile_dirs += glob.glob(os.path.join(appdata, r"Mozilla\Firefox\Profiles\*"))
+        p = Path(appdata) / "Mozilla" / "Firefox" / "Profiles"
+        if p.exists():
+            profile_dirs += [str(d) for d in p.iterdir() if d.is_dir()]
     elif system == "Darwin":
-        profile_dirs += glob.glob(os.path.expanduser("~/Library/Application Support/Firefox/Profiles/*"))
+        p = Path.home() / "Library" / "Application Support" / "Firefox" / "Profiles"
+        if p.exists():
+            profile_dirs += [str(d) for d in p.iterdir() if d.is_dir()]
     else:
-        profile_dirs += glob.glob(os.path.expanduser("~/.mozilla/firefox/*.default*"))
-        profile_dirs += glob.glob(os.path.expanduser("~/.mozilla/firefox/*.release*"))
+        p = Path.home() / ".mozilla" / "firefox"
+        if p.exists():
+            profile_dirs += [str(d) for d in p.iterdir() if d.name.endswith(".default") or d.name.endswith(".release")]
 
     if not profile_dirs:
         log.debug("No Firefox profiles found.")
@@ -369,12 +374,17 @@ def _uninstall_firefox(cert_name: str):
 
     if system == "Windows":
         appdata = os.environ.get("APPDATA", "")
-        profile_dirs += glob.glob(os.path.join(appdata, r"Mozilla\Firefox\Profiles\*"))
+        p = Path(appdata) / "Mozilla" / "Firefox" / "Profiles"
+        if p.exists():
+            profile_dirs += [str(d) for d in p.iterdir() if d.is_dir()]
     elif system == "Darwin":
-        profile_dirs += glob.glob(os.path.expanduser("~/Library/Application Support/Firefox/Profiles/*"))
+        p = Path.home() / "Library" / "Application Support" / "Firefox" / "Profiles"
+        if p.exists():
+            profile_dirs += [str(d) for d in p.iterdir() if d.is_dir()]
     else:
-        profile_dirs += glob.glob(os.path.expanduser("~/.mozilla/firefox/*.default*"))
-        profile_dirs += glob.glob(os.path.expanduser("~/.mozilla/firefox/*.release*"))
+        p = Path.home() / ".mozilla" / "firefox"
+        if p.exists():
+            profile_dirs += [str(d) for d in p.iterdir() if d.name.endswith(".default") or d.name.endswith(".release")]
 
     if not profile_dirs:
         log.debug("No Firefox profiles found.")
