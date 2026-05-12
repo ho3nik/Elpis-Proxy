@@ -231,6 +231,11 @@ class ElpisGUI(ctk.CTk):
                                        font=("Helvetica", 13), command=self._install_cert)
         self.cert_btn.pack(side="left", padx=(0, 8))
 
+        self.folder_btn = ctk.CTkButton(bottom, text="📁 Cert Folder", fg_color="#34495e",
+                                         hover_color="#2c3e50", width=140, height=38,
+                                         font=("Helvetica", 13), command=self._open_cert_folder)
+        self.folder_btn.pack(side="left", padx=(0, 8))
+
         self.proxy_btn = ctk.CTkButton(bottom, text="🌐 Set System Proxy", fg_color=ACCENT,
                                         hover_color=ACCENT_HOVER, width=170, height=38,
                                         font=("Helvetica", 13, "bold"), command=self._toggle_system_proxy)
@@ -423,12 +428,31 @@ class ElpisGUI(ctk.CTk):
             if ok:
                 from tkinter import messagebox
                 messagebox.showinfo("Certificate Installed", 
-                    "Root Certificate installed successfully!\n\nPlease RESTART your browser for changes to take effect.")
+                    "Root Certificate installed to System Keychain!\n\n"
+                    "CHROME USERS:\n"
+                    "1. Chrome may need a FULL RESTART.\n"
+                    "2. If it still fails, go to chrome://settings/security\n"
+                    "3. Click 'Manage certificates' -> 'Trust' -> 'Import' and select ca.crt.")
                 self._log("✅ Root Certificate installed.")
             else:
                 self._log("❌ Certificate installation failed. Please install ca/ca.crt manually.")
         except Exception as e:
             self._log(f"❌ Cert installation error: {e}")
+
+    def _open_cert_folder(self):
+        cert_dir = HERE / "ca"
+        if not cert_dir.exists():
+            from mitm import MITMCertManager
+            MITMCertManager()
+        
+        try:
+            if platform.system() == "Darwin":
+                subprocess.Popen(["open", str(cert_dir)])
+            elif platform.system() == "Windows":
+                os.startfile(str(cert_dir))
+            self._log(f"📁 Opening certificate folder: {cert_dir}")
+        except Exception as e:
+            self._log(f"❌ Could not open folder: {e}")
 
     # ── Proxy Control ─────────────────────────────────────────────────────
     def _start_proxy(self):
