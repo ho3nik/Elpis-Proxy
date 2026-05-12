@@ -85,6 +85,9 @@ def main(page: ft.Page):
             s_ids = script_ids_field.value.strip().split("\n")
             config["script_ids"] = [s.strip() for s in s_ids if s.strip()]
             
+            config["socks5_enabled"] = socks5_enabled_field.value
+            config["socks5_port"] = int(socks5_port_field.value or 1080)
+            
             with open(CONFIG_PATH, "w") as f:
                 json.dump(config, f, indent=2)
             page.show_snack_bar(ft.SnackBar(ft.Text("Config saved!")))
@@ -196,6 +199,8 @@ def main(page: ft.Page):
         multiline=True,
         min_lines=3
     )
+    socks5_enabled_field = ft.Switch(label="Enable SOCKS5 Proxy", value=config.get("socks5_enabled", True))
+    socks5_port_field = ft.TextField(label="SOCKS5 Port", value=str(config.get("socks5_port", 1080)), keyboard_type=ft.KeyboardType.NUMBER)
 
     config_tab = ft.Column([
         ft.Text("Configuration", size=24, weight=ft.FontWeight.BOLD),
@@ -203,6 +208,9 @@ def main(page: ft.Page):
         auth_key_field,
         worker_url_field,
         script_ids_field,
+        ft.Divider(),
+        socks5_enabled_field,
+        socks5_port_field,
         ft.ElevatedButton("SAVE CONFIG", icon=ft.icons.SAVE, on_click=lambda _: save_config()),
         ft.Text("Note: After saving, restart the proxy to apply changes.", size=12, italic=True, color=ft.colors.GREY_400)
     ], scroll=ft.ScrollMode.AUTO)
