@@ -26,7 +26,7 @@ jobs:
 
     - name: Build EXE with PyInstaller
       run: |
-        pyinstaller --noconfirm --windowed --onefile --name "Elpis" --add-data "src;src" gui.py
+        pyinstaller --noconfirm --windowed --onefile --name "Elpis" --add-data "src;src" --paths "." --paths "src" --collect-all cryptography --hidden-import=cryptography --hidden-import=h2 --hidden-import=brotli --hidden-import=zstandard gui.py
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
