@@ -26,7 +26,7 @@ ERROR_THRESHOLD = 10
 
 HERE = Path(__file__).resolve().parent
 CONFIG_PATH = HERE / "config.json"
-MAIN_SCRIPT = HERE / "main.py"
+MAIN_SCRIPT = HERE / "proxy_logic.py"
 REQUIREMENTS = HERE / "requirements.txt"
 
 

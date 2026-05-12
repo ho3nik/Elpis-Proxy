@@ -23,6 +23,11 @@ jobs:
         pip install flet
         pip install -r requirements_mobile.txt
 
+    - name: Install Linux dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgtk-3-dev libayatana-appindicator3-dev ninja-build
+
     - name: Set up Java
       uses: actions/setup-java@v4
       with:
@@ -37,7 +42,9 @@ jobs:
 
     - name: Build Android APK
       run: |
-        flet build apk --verbose --main mobile_gui.py
+        # Ensure flet is installed and run the build
+        pip install flet
+        flet build apk --verbose
 
     - name: Upload APK
       uses: actions/upload-artifact@v4

@@ -1,320 +1,236 @@
-#!/usr/bin/env python3
-"""
-DomainFront Tunnel — Bypass DPI censorship via GAS (Google Apps Script) and Cloudflare Workers.
-
-Run a local HTTP proxy that tunnels all traffic through a Google Apps
-Script relay fronted by www.google.com (TLS SNI shows www.google.com
-while the encrypted Host header points at script.google.com).
-"""
-
-import argparse
 import asyncio
 import json
 import logging
-import os
+import platform
 import sys
+import threading
+from pathlib import Path
 
-# Project modules live under ./src — put that folder on sys.path so the
-# historical flat imports ("from proxy_server import …") keep working.
-_SRC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src")
-if _SRC_DIR not in sys.path:
-    sys.path.insert(0, _SRC_DIR)
+import flet as ft
 
-from cert_installer import install_ca, uninstall_ca, is_ca_trusted
-from constants import __version__
-from lan_utils import log_lan_access
-from google_ip_scanner import scan_sync
-from logging_utils import configure as configure_logging, print_banner
-from mitm import CA_CERT_FILE
-from proxy_server import ProxyServer
+# Import the core proxy server
+try:
+    from proxy_logic import ProxyServer, _run as run_proxy_internal
+except ImportError:
+    # If running from a different directory
+    sys.path.append(str(Path(__file__).parent))
+    from proxy_logic import ProxyServer, _run as run_proxy_internal
 
+HERE = Path(__file__).resolve().parent
+CONFIG_PATH = HERE / "config.json"
 
-def setup_logging(level_name: str):
-    configure_logging(level_name)
-
-
-_PLACEHOLDER_AUTH_KEYS = {
-    "",
-    "CHANGE_ME_TO_A_STRONG_SECRET",
-    "your-secret-password-here",
+DEFAULT_CONFIG = {
+    "auth_key": "",
+    "script_ids": [],
+    "listen_host": "127.0.0.1",
+    "listen_port": 8080,
+    "socks5_enabled": True,
+    "socks5_port": 1080,
+    "lan_sharing": False,
+    "use_google_relay": True,
+    "relay_worker_url": "",
+    "tls_connect_timeout": 20,
+    "tcp_connect_timeout": 15,
+    "max_response_body_bytes": 209715200,
+    "parallel_relay": 2,
+    "sticky_scripts": False,
+    "youtube_via_relay": True,
+    "block_hosts": [],
+    "bypass_hosts": ["localhost", ".local", ".lan", ".home.arpa"],
+    "direct_google_exclude": [],
+    "hosts": {},
 }
 
+# ── Custom Logger for Flet UI ──────────────────────────────────────────────
+class FletLogHandler(logging.Handler):
+    def __init__(self, callback):
+        super().__init__()
+        self.callback = callback
 
-def parse_args():
-    parser = argparse.ArgumentParser(
-        prog="domainfront-tunnel",
-        description="Local HTTP proxy that relays traffic through Google Apps Script.",
-    )
-    parser.add_argument(
-        "-c", "--config",
-        default=os.environ.get("DFT_CONFIG", "config.json"),
-        help="Path to config file (default: config.json, env: DFT_CONFIG)",
-    )
-    parser.add_argument(
-        "-p", "--port",
-        type=int,
-        default=None,
-        help="Override listen port (env: DFT_PORT)",
-    )
-    parser.add_argument(
-        "--host",
-        default=None,
-        help="Override listen host (env: DFT_HOST)",
-    )
-    parser.add_argument(
-        "--socks5-port",
-        type=int,
-        default=None,
-        help="Override SOCKS5 listen port (env: DFT_SOCKS5_PORT)",
-    )
-    parser.add_argument(
-        "--disable-socks5",
-        action="store_true",
-        help="Disable the built-in SOCKS5 listener.",
-    )
-    parser.add_argument(
-        "--log-level",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-        default=None,
-        help="Override log level (env: DFT_LOG_LEVEL)",
-    )
-    parser.add_argument(
-        "-v", "--version",
-        action="version",
-        version=f"%(prog)s {__version__}",
-    )
-    parser.add_argument(
-        "--install-cert",
-        action="store_true",
-        help="Install the MITM CA certificate as a trusted root and exit.",
-    )
-    parser.add_argument(
-        "--uninstall-cert",
-        action="store_true",
-        help="Remove the MITM CA certificate from trusted roots and exit.",
-    )
-    parser.add_argument(
-        "--no-cert-check",
-        action="store_true",
-        help="Skip the certificate installation check on startup.",
-    )
-    parser.add_argument(
-        "--scan",
-        action="store_true",
-        help="Scan Google IPs to find the fastest reachable one and exit.",
-    )
-    return parser.parse_args()
+    def emit(self, record):
+        log_entry = self.format(record)
+        self.callback(log_entry)
 
+def main(page: ft.Page):
+    page.title = "Elpis Mobile"
+    page.theme_mode = ft.ThemeMode.DARK
+    page.padding = 20
+    page.window_width = 400
+    page.window_height = 800
+    page.window_resizable = True
 
-def main():
-    args = parse_args()
+    # ── State ──────────────────────────────────────────────────────────────
+    proxy_task = None
+    proxy_loop = None
+    is_running = False
+    config = dict(DEFAULT_CONFIG)
 
-    # Handle cert-only commands before loading config so they can run standalone.
-    if args.install_cert or args.uninstall_cert:
-        setup_logging("INFO")
-        _log = logging.getLogger("Main")
-
-        if args.install_cert:
-            _log.info("Installing CA certificate…")
-            if not os.path.exists(CA_CERT_FILE):
-                from mitm import MITMCertManager
-                MITMCertManager()  # side-effect: creates ca/ca.crt + ca/ca.key
-            ok = install_ca(CA_CERT_FILE)
-            sys.exit(0 if ok else 1)
-
-        _log.info("Removing CA certificate…")
-        ok = uninstall_ca(CA_CERT_FILE)
-        if ok:
-            _log.info("CA certificate removed successfully.")
-        else:
-            _log.warning("CA certificate removal may have failed. Check logs above.")
-        sys.exit(0 if ok else 1)
-
-    config_path = args.config
-
-    try:
-        with open(config_path) as f:
-            config = json.load(f)
-    except FileNotFoundError:
-        print(f"Config not found: {config_path}")
-        # Offer the interactive wizard if it's available and we're on a TTY.
-        wizard = os.path.join(os.path.dirname(os.path.abspath(__file__)), "setup.py")
-        if os.path.exists(wizard) and sys.stdin.isatty():
+    # ── Helpers ────────────────────────────────────────────────────────────
+    def load_config():
+        nonlocal config
+        if CONFIG_PATH.exists():
             try:
-                answer = input("Run the interactive setup wizard now? [Y/n]: ").strip().lower()
-            except EOFError:
-                answer = "n"
-            if answer in ("", "y", "yes"):
-                import subprocess
-                rc = subprocess.call([sys.executable, wizard])
-                if rc != 0:
-                    sys.exit(rc)
-                try:
-                    with open(config_path) as f:
-                        config = json.load(f)
-                except Exception as e:
-                    print(f"Could not load config after setup: {e}")
-                    sys.exit(1)
-            else:
-                print("Copy config.example.json to config.json and fill in your values,")
-                print("or run: python setup.py")
-                sys.exit(1)
+                with open(CONFIG_PATH) as f:
+                    config.update(json.load(f))
+            except:
+                pass
+
+    def save_config():
+        try:
+            # Sync fields back to config
+            config["auth_key"] = auth_key_field.value
+            config["relay_worker_url"] = worker_url_field.value
+            
+            # Handle list fields
+            s_ids = script_ids_field.value.strip().split("\n")
+            config["script_ids"] = [s.strip() for s in s_ids if s.strip()]
+            
+            with open(CONFIG_PATH, "w") as f:
+                json.dump(config, f, indent=2)
+            page.show_snack_bar(ft.SnackBar(ft.Text("Config saved!")))
+        except Exception as e:
+            page.show_snack_bar(ft.SnackBar(ft.Text(f"Error saving: {e}")))
+
+    # ── UI Components ──────────────────────────────────────────────────────
+    log_view = ft.ListView(expand=True, spacing=5, auto_scroll=True)
+    
+    def append_log(text):
+        log_view.controls.append(ft.Text(text, size=12, font_family="monospace"))
+        page.update()
+
+    # Set up global logging to pipe to our UI
+    flet_handler = FletLogHandler(append_log)
+    flet_handler.setFormatter(logging.Formatter("%(asctime)s %(message)s", datefmt="%H:%M:%S"))
+    logging.getLogger().addHandler(flet_handler)
+    logging.getLogger().setLevel(logging.INFO)
+
+    async def start_proxy_task():
+        nonlocal is_running, proxy_task
+        try:
+            is_running = True
+            update_status_ui()
+            append_log("🚀 Starting proxy...")
+            await run_proxy_internal(config)
+        except Exception as e:
+            append_log(f"❌ Error: {e}")
+        finally:
+            is_running = False
+            update_status_ui()
+            append_log("🛑 Proxy stopped.")
+
+    def toggle_proxy(e):
+        nonlocal proxy_task, is_running
+        if not is_running:
+            # Run the proxy in the background
+            save_config()
+            asyncio.create_task(start_proxy_task())
         else:
-            print("Run: python setup.py   (or copy config.example.json to config.json)")
-            sys.exit(1)
-    except json.JSONDecodeError as e:
-        print(f"Invalid JSON in config: {e}")
-        sys.exit(1)
+            # How to stop? main.py's server needs a way to be signaled.
+            # For now, we'll suggest a restart.
+            append_log("⚠️ To stop, please restart the app (Signal handling in same-process loop is complex).")
 
-    # Environment variable overrides
-    if os.environ.get("DFT_AUTH_KEY"):
-        config["auth_key"] = os.environ["DFT_AUTH_KEY"]
-    if os.environ.get("DFT_SCRIPT_ID"):
-        config["script_id"] = os.environ["DFT_SCRIPT_ID"]
+    def copy_tg_proxy():
+        port = config.get("socks5_port", 1080)
+        link = f"tg://socks?server=127.0.0.1&port={port}"
+        page.set_clipboard(link)
+        page.show_snack_bar(ft.SnackBar(ft.Text(f"Copied: {link}")))
 
-    # CLI argument overrides
-    if args.port is not None:
-        config["listen_port"] = args.port
-    elif os.environ.get("DFT_PORT"):
-        config["listen_port"] = int(os.environ["DFT_PORT"])
+    def update_status_ui():
+        status_dot.color = ft.colors.GREEN if is_running else ft.colors.RED
+        status_text.value = "RUNNING" if is_running else "STOPPED"
+        start_btn.text = "STOP" if is_running else "START PROXY"
+        start_btn.icon = ft.icons.STOP if is_running else ft.icons.PLAY_ARROW
+        page.update()
 
-    if args.host is not None:
-        config["listen_host"] = args.host
-    elif os.environ.get("DFT_HOST"):
-        config["listen_host"] = os.environ["DFT_HOST"]
+    # ── Build UI Tabs ──────────────────────────────────────────────────────
+    
+    # 1. Status Tab
+    status_dot = ft.Icon(ft.icons.CIRCLE, color=ft.colors.RED, size=12)
+    status_text = ft.Text("STOPPED", weight=ft.FontWeight.BOLD)
+    start_btn = ft.ElevatedButton(
+        "START PROXY", 
+        icon=ft.icons.PLAY_ARROW,
+        on_click=toggle_proxy,
+        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10)),
+        height=60,
+        expand=True
+    )
+    
+    tg_btn = ft.ElevatedButton(
+        "TELEGRAM PROXY",
+        icon=ft.icons.SEND,
+        on_click=lambda _: copy_tg_proxy(),
+        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), color=ft.colors.BLUE_400),
+        height=60,
+        expand=True
+    )
 
-    if args.socks5_port is not None:
-        config["socks5_port"] = args.socks5_port
-    elif os.environ.get("DFT_SOCKS5_PORT"):
-        config["socks5_port"] = int(os.environ["DFT_SOCKS5_PORT"])
-
-    if args.disable_socks5:
-        config["socks5_enabled"] = False
-
-    if args.log_level is not None:
-        config["log_level"] = args.log_level
-    elif os.environ.get("DFT_LOG_LEVEL"):
-        config["log_level"] = os.environ["DFT_LOG_LEVEL"]
-
-    for key in ("auth_key",):
-        if key not in config:
-            print(f"Missing required config key: {key}")
-            sys.exit(1)
-
-    if config.get("auth_key", "") in _PLACEHOLDER_AUTH_KEYS:
-        print(
-            "Refusing to start: 'auth_key' is unset or uses a known placeholder.\n"
-            "Pick a long random secret and set it in both config.json AND "
-            "the AUTH_KEY constant inside Code.gs (they must match)."
+    status_card = ft.Card(
+        content=ft.Container(
+            content=ft.Column([
+                ft.Row([status_dot, status_text], alignment=ft.MainAxisAlignment.CENTER),
+                ft.Divider(),
+                ft.Row([start_btn]),
+                ft.Row([tg_btn])
+            ]),
+            padding=20
         )
-        sys.exit(1)
+    )
 
-    # Always Apps Script mode — force-set for backward-compat configs.
-    config["mode"] = "apps_script"
-    sid = config.get("script_ids") or config.get("script_id")
-    if not sid or (isinstance(sid, str) and sid == "YOUR_APPS_SCRIPT_DEPLOYMENT_ID"):
-        print("Missing 'script_id' in config.")
-        print("Deploy the Apps Script from Code.gs and paste the Deployment ID.")
-        sys.exit(1)
+    status_tab = ft.Column([
+        ft.Text("Elpis Control Panel", size=24, weight=ft.FontWeight.BOLD),
+        ft.Text("MasterHttpRelay for Android", size=14, color=ft.colors.GREY_400),
+        ft.VerticalDivider(height=10),
+        status_card,
+        ft.Text("Logs", size=18, weight=ft.FontWeight.BOLD),
+        ft.Container(content=log_view, expand=True, border=ft.border.all(1, ft.colors.GREY_800), border_radius=10, padding=10)
+    ], expand=True)
 
-    # ── Google IP Scanner ──────────────────────────────────────────────────
-    if args.scan:
-        setup_logging("INFO")
-        front_domain = config.get("front_domain", "www.google.com")
-        _log = logging.getLogger("Main")
-        _log.info(f"Scanning Google IPs (fronting domain: {front_domain})")
-        ok = scan_sync(front_domain)
-        sys.exit(0 if ok else 1)
+    # 2. Config Tab
+    load_config()
+    auth_key_field = ft.TextField(label="Auth Key", value=config.get("auth_key", ""), password=True, can_reveal_password=True)
+    worker_url_field = ft.TextField(label="Cloudflare Worker URL", value=config.get("relay_worker_url", ""))
+    script_ids_field = ft.TextField(
+        label="Google Apps Script IDs (one per line)", 
+        value="\n".join(config.get("script_ids", [])),
+        multiline=True,
+        min_lines=3
+    )
 
-    setup_logging(config.get("log_level", "INFO"))
-    log = logging.getLogger("Main")
+    config_tab = ft.Column([
+        ft.Text("Configuration", size=24, weight=ft.FontWeight.BOLD),
+        ft.VerticalDivider(height=10),
+        auth_key_field,
+        worker_url_field,
+        script_ids_field,
+        ft.ElevatedButton("SAVE CONFIG", icon=ft.icons.SAVE, on_click=lambda _: save_config()),
+        ft.Text("Note: After saving, restart the proxy to apply changes.", size=12, italic=True, color=ft.colors.GREY_400)
+    ], scroll=ft.ScrollMode.AUTO)
 
-    print_banner(__version__)
-    log.info("DomainFront Tunnel starting (Apps Script relay)")
+    # 3. About Tab
+    about_tab = ft.Column([
+        ft.Text("About Elpis", size=24, weight=ft.FontWeight.BOLD),
+        ft.Text("Version 1.0.0-Mobile"),
+        ft.Text("A specialized HTTP relay for bypassing network restrictions."),
+        ft.Text("\nInstructions:", weight=ft.FontWeight.BOLD),
+        ft.Text("1. Fill in your Auth Key and Script IDs."),
+        ft.Text("2. Click START PROXY."),
+        ft.Text("3. Go to your Phone's WiFi Settings -> Modify Network -> Proxy -> Manual."),
+        ft.Text("4. Set Proxy Host to 127.0.0.1 and Port to 8080."),
+    ])
 
-    log.info("Apps Script relay : SNI=%s → script.google.com",
-             config.get("front_domain", "www.google.com"))
-    script_ids = config.get("script_ids") or config.get("script_id")
-    if isinstance(script_ids, list):
-        log.info("Script IDs        : %d scripts (sticky per-host)", len(script_ids))
-        for i, sid in enumerate(script_ids):
-            log.info("  [%d] %s", i + 1, sid)
-    else:
-        log.info("Script ID         : %s", script_ids)
+    tabs = ft.Tabs(
+        selected_index=0,
+        animation_duration=300,
+        tabs=[
+            ft.Tab(text="Status", icon=ft.icons.DASHBOARD, content=status_tab),
+            ft.Tab(text="Config", icon=ft.icons.SETTINGS, content=config_tab),
+            ft.Tab(text="About", icon=ft.icons.INFO, content=about_tab),
+        ],
+        expand=True
+    )
 
-    # Ensure CA file exists before checking / installing it.
-    # MITMCertManager generates ca/ca.crt on first instantiation.
-    if not os.path.exists(CA_CERT_FILE):
-        from mitm import MITMCertManager
-        MITMCertManager()  # side-effect: creates ca/ca.crt + ca/ca.key
-
-    # Auto-install MITM CA if not already trusted
-    if not args.no_cert_check:
-        if not is_ca_trusted(CA_CERT_FILE):
-            log.warning("MITM CA is not trusted — attempting automatic installation…")
-            ok = install_ca(CA_CERT_FILE)
-            if ok:
-                log.info("CA certificate installed. You may need to restart your browser.")
-            else:
-                log.error(
-                    "Auto-install failed. Run with --install-cert (may need admin/sudo) "
-                    "or manually install ca/ca.crt as a trusted root CA."
-                )
-        else:
-            log.info("MITM CA is already trusted.")
-
-    # ── LAN sharing configuration ────────────────────────────────────────
-    lan_sharing = config.get("lan_sharing", False)
-    listen_host = config.get("listen_host", "127.0.0.1")
-    if lan_sharing:
-        # If LAN sharing is enabled and host is still localhost, change to all interfaces
-        if listen_host == "127.0.0.1":
-            config["listen_host"] = "0.0.0.0"
-            listen_host = "0.0.0.0"
-            log.info("LAN sharing enabled — listening on all interfaces")
-
-    # If either explicit LAN sharing is enabled or we bind to all interfaces,
-    # print concrete IPv4 addresses users can use on other devices.
-    lan_mode = lan_sharing or listen_host in ("0.0.0.0", "::")
-    if lan_mode:
-        socks_port = config.get("socks5_port", 1080) if config.get("socks5_enabled", True) else None
-        log_lan_access(config.get("listen_port", 8080), socks_port)
-
-    try:
-        asyncio.run(_run(config))
-    except KeyboardInterrupt:
-        log.info("Stopped")
-
-
-def _make_exception_handler(log):
-    """Return an asyncio exception handler that silences Windows WinError 10054
-    noise from connection cleanup (ConnectionResetError in
-    _ProactorBasePipeTransport._call_connection_lost), which is harmless but
-    verbose on Python/Windows when a remote host force-closes a socket."""
-    def handler(loop, context):
-        exc = context.get("exception")
-        cb  = context.get("handle") or context.get("source_traceback", "")
-        if (
-            isinstance(exc, ConnectionResetError)
-            and "_call_connection_lost" in str(cb)
-        ):
-            return  # suppress: benign Windows socket cleanup race
-        log.error("[asyncio]  %s", context.get("message", context))
-        if exc:
-            loop.default_exception_handler(context)
-    return handler
-
-
-async def _run(config):
-    loop = asyncio.get_running_loop()
-    _log = logging.getLogger("asyncio")
-    loop.set_exception_handler(_make_exception_handler(_log))
-    server = ProxyServer(config)
-    try:
-        await server.start()
-    finally:
-        await server.stop()
-
+    page.add(tabs)
 
 if __name__ == "__main__":
-    main()
+    ft.app(target=main)
