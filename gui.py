@@ -8,18 +8,26 @@ import customtkinter as ctk
 import json
 import os
 import sys
-import subprocess
-import threading
-import platform
 import signal
 import queue
 import smtplib
 import traceback
+import multiprocessing
+import smtplib
+import traceback
+import urllib.parse
 from pathlib import Path
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from tkinter import filedialog
+import customtkinter as ctk
+
+# Local imports
+try:
+    import proxy_logic
+except ImportError:
+    pass
 
 CRASH_EMAIL = "rahaajeagar@gmail.com"
 # Removed automated email reporting as per user request.
@@ -43,6 +51,10 @@ def _find_python():
 
 def _auto_install_deps():
     """Ensure a venv exists and all requirements.txt deps are installed."""
+    # SKIP if running as a bundled EXE to avoid infinite loop
+    if getattr(sys, 'frozen', False):
+        return
+        
     venv_dir = HERE / ".venv"
     py = sys.executable
 
@@ -489,8 +501,15 @@ class ElpisGUI(ctk.CTk):
         # 3. Start proxy process
         self._log("🚀 Starting proxy...")
         try:
+            if getattr(sys, 'frozen', False):
+                # If bundled, we run the SAME EXE but with the --backend flag
+                cmd = [sys.executable, "--backend"]
+                # We need to ensure proxy_logic.py logic is available to the EXE main block
+            else:
+                cmd = [self.python_exe, str(MAIN_SCRIPT)]
+                
             self.proxy_process = subprocess.Popen(
-                [self.python_exe, str(MAIN_SCRIPT)],
+                cmd,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 cwd=str(HERE), bufsize=1, text=True,
             )
@@ -619,7 +638,17 @@ class ElpisGUI(ctk.CTk):
 
 
 if __name__ == "__main__":
-    # Auto-install dependencies before GUI opens
-    _auto_install_deps()
-    app = ElpisGUI()
-    app.mainloop()
+    multiprocessing.freeze_support()
+    
+    # Check if we should run as backend
+    if "--backend" in sys.argv:
+        try:
+            proxy_logic.main()
+        except NameError:
+            import proxy_logic
+            proxy_logic.main()
+    else:
+        # Auto-install dependencies before GUI opens (only if not frozen)
+        _auto_install_deps()
+        app = ElpisGUI()
+        app.mainloop()
