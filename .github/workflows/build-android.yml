@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Elpis Mobile
 
 on:
   push:
@@ -7,50 +7,41 @@ on:
 
 jobs:
   build:
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-    - name: Install Flet and Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install flet
-        pip install -r requirements_mobile.txt
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-    - name: Install Linux dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libgtk-3-dev libayatana-appindicator3-dev ninja-build
+      - name: Install Flet
+        run: pip install flet
 
-    - name: Set up Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'zulu'
-        java-version: '17'
+      - name: Prepare Mobile Requirements
+        run: |
+          # Replace the main requirements file so Flet processes the mobile dependencies
+          # We check if requirements_desktop.txt exists (from previous runs) or use current requirements.txt
+          if [ -f requirements.txt ] && [ ! -f requirements_desktop.txt ]; then
+            mv requirements.txt requirements_desktop.txt
+          fi
+          cp requirements_mobile.txt requirements.txt
 
-    - name: Set up Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.19.0'
-        channel: 'stable'
+      - name: Build APK
+        run: flet build apk --verbose
 
-    - name: Prepare Requirements for Flet
-      run: |
-        mv requirements.txt requirements_desktop.txt
-        cp requirements_mobile.txt requirements.txt
-
-    - name: Build Android APK
-      run: |
-        python -m flet build apk --verbose
-
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: Elpis-Android-APK
-        path: build/apk/*.apk
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Elpis-Android-APK
+          path: build/apk/**/*.apk
