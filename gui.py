@@ -4,10 +4,6 @@ Elpis GUI — Cross-platform CustomTkinter interface for MHR-CFW proxy.
 Provides config editing, proxy start/stop, system proxy set/unset, and log viewer.
 """
 
-import cryptography
-import h2
-import brotli
-import zstandard
 import customtkinter as ctk
 import json
 import os
@@ -23,7 +19,6 @@ import platform
 from pathlib import Path
 from datetime import datetime
 from tkinter import filedialog
-import customtkinter as ctk
 
 # Local imports
 try:
