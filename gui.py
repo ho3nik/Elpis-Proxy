@@ -83,7 +83,7 @@ def _auto_install_deps():
     except Exception:
         pass
 
-# ── Theme ────────────────────────────────────────────────────────────────
+# ── Theme ────────────────────────────────────────────────────────────
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
@@ -434,9 +434,10 @@ class ElpisGUI(ctk.CTk):
     def _install_cert(self):
         self._log("🛡️ Attempting to install Root Certificate...")
         try:
-            from proxy_logic import CA_CERT_FILE, install_ca
+            from proxy_logic import install_ca
+            from mitm import CA_CERT_FILE, MITMCertManager
+            
             if not CA_CERT_FILE.exists():
-                from mitm import MITMCertManager
                 MITMCertManager()
             
             ok = install_ca(CA_CERT_FILE)
