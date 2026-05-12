@@ -129,6 +129,12 @@ def main(page: ft.Page):
             # For now, we'll suggest a restart.
             append_log("⚠️ To stop, please restart the app (Signal handling in same-process loop is complex).")
 
+    def copy_tg_proxy():
+        port = config.get("socks5_port", 1080)
+        link = f"tg://socks?server=127.0.0.1&port={port}"
+        page.set_clipboard(link)
+        page.show_snack_bar(ft.SnackBar(ft.Text(f"Copied: {link}")))
+
     def update_status_ui():
         status_dot.color = ft.colors.GREEN if is_running else ft.colors.RED
         status_text.value = "RUNNING" if is_running else "STOPPED"
@@ -149,13 +155,23 @@ def main(page: ft.Page):
         height=60,
         expand=True
     )
+    
+    tg_btn = ft.ElevatedButton(
+        "TELEGRAM PROXY",
+        icon=ft.icons.SEND,
+        on_click=lambda _: copy_tg_proxy(),
+        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), color=ft.colors.BLUE_400),
+        height=60,
+        expand=True
+    )
 
     status_card = ft.Card(
         content=ft.Container(
             content=ft.Column([
                 ft.Row([status_dot, status_text], alignment=ft.MainAxisAlignment.CENTER),
                 ft.Divider(),
-                ft.Row([start_btn])
+                ft.Row([start_btn]),
+                ft.Row([tg_btn])
             ]),
             padding=20
         )

@@ -298,6 +298,8 @@ class ElpisGUI(ctk.CTk):
                        width=110, height=30, command=self._clear_logs).pack(side="left", padx=4)
         ctk.CTkButton(btn_bar, text="📁 Export Logs", fg_color=ACCENT, hover_color=ACCENT_HOVER,
                        width=130, height=30, command=self._export_logs).pack(side="left", padx=4)
+        ctk.CTkButton(btn_bar, text="✈️ Telegram Proxy", fg_color="#24A1DE", hover_color="#1d86ba",
+                       width=140, height=30, command=self._copy_tg_proxy).pack(side="left", padx=4)
 
     # ── Widget Helpers ────────────────────────────────────────────────────
     def _section(self, parent, title):
@@ -383,6 +385,16 @@ class ElpisGUI(ctk.CTk):
         self.log_history.clear()
         self.error_count = 0
         self.crash_email_sent = False
+
+    def _copy_tg_proxy(self):
+        port = self.config.get("socks5_port", 1080)
+        link = f"tg://socks?server=127.0.0.1&port={port}"
+        self.clipboard_clear()
+        self.clipboard_append(link)
+        self.update()
+        self._log(f"📋 Telegram proxy link copied: {link}")
+        from tkinter import messagebox
+        messagebox.showinfo("Telegram Proxy", f"Link copied to clipboard!\n\n{link}\n\nPaste this in Telegram to use the proxy.")
 
     def _export_logs(self):
         path = filedialog.asksaveasfilename(
