@@ -217,6 +217,13 @@ def main(page: ft.Page):
         ft.Text("2. Click START PROXY."),
         ft.Text("3. Go to your Phone's WiFi Settings -> Modify Network -> Proxy -> Manual."),
         ft.Text("4. Set Proxy Host to 127.0.0.1 and Port to 8080."),
+        ft.Text("\n🛡️ HTTPS Security Setup:", weight=ft.FontWeight.BOLD),
+        ft.Text("To fix 'Your connection is not private' errors, you MUST install the Root Certificate:"),
+        ft.Text("1. Connect your phone to your computer."),
+        ft.Text("2. Locate 'ca/ca.crt' in the Elpis folder on your computer."),
+        ft.Text("3. Copy 'ca.crt' to your phone's internal storage."),
+        ft.Text("4. On your phone: Settings -> Security -> More Security Settings -> Encryption & credentials -> Install a certificate -> CA certificate."),
+        ft.Text("5. Install 'ca.crt' and restart your browser."),
     ])
 
     tabs = ft.Tabs(

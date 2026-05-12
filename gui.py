@@ -22,7 +22,7 @@ from email.mime.multipart import MIMEMultipart
 from tkinter import filedialog
 
 CRASH_EMAIL = "rahaajeagar@gmail.com"
-ERROR_THRESHOLD = 10
+# Removed automated email reporting as per user request.
 
 HERE = Path(__file__).resolve().parent
 CONFIG_PATH = HERE / "config.json"
@@ -226,6 +226,11 @@ class ElpisGUI(ctk.CTk):
                                        state="disabled")
         self.stop_btn.pack(side="left", padx=(0, 8))
 
+        self.cert_btn = ctk.CTkButton(bottom, text="🛡️ Install Cert", fg_color="#34495e",
+                                       hover_color="#2c3e50", width=140, height=38,
+                                       font=("Helvetica", 13), command=self._install_cert)
+        self.cert_btn.pack(side="left", padx=(0, 8))
+
         self.proxy_btn = ctk.CTkButton(bottom, text="🌐 Set System Proxy", fg_color=ACCENT,
                                         hover_color=ACCENT_HOVER, width=170, height=38,
                                         font=("Helvetica", 13, "bold"), command=self._toggle_system_proxy)
@@ -362,12 +367,8 @@ class ElpisGUI(ctk.CTk):
         self.log_history.append(entry)
         self.log_queue.put(entry)
         # Track errors for crash detection
-        lower = msg.lower()
-        if any(k in lower for k in ("error", "❌", "exception", "traceback", "crash", "fatal")):
+        if any(word in msg.lower() for word in ["error", "exception", "crash", "fatal", "traceback"]):
             self.error_count += 1
-            if self.error_count >= ERROR_THRESHOLD and not self.crash_email_sent:
-                self.crash_email_sent = True
-                threading.Thread(target=self._send_crash_email, daemon=True).start()
 
     def _poll_log_queue(self):
         while not self.log_queue.empty():
@@ -410,37 +411,24 @@ class ElpisGUI(ctk.CTk):
             except Exception as e:
                 self._log(f"❌ Export failed: {e}")
 
-    def _send_crash_email(self):
-        log_text = "\n".join(self.log_history[-200:])
-        body = (
-            f"Elpis Crash Report\n"
-            f"Time: {datetime.now().isoformat()}\n"
-            f"OS: {platform.system()} {platform.release()}\n"
-            f"Python: {sys.version}\n"
-            f"Errors detected: {self.error_count}\n\n"
-            f"--- Last 200 log lines ---\n{log_text}"
-        )
-        # Save crash log locally first
-        crash_path = HERE / f"crash_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    def _install_cert(self):
+        self._log("🛡️ Attempting to install Root Certificate...")
         try:
-            with open(crash_path, "w", encoding="utf-8") as f:
-                f.write(body)
-        except Exception:
-            pass
-        # Try sending via mailto (opens default mail client)
-        try:
-            import urllib.parse
-            subject = urllib.parse.quote(f"Elpis Crash Report - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-            # Truncate body for mailto URL limit
-            short_body = urllib.parse.quote(body[:1500] + f"\n\n[Full log saved to {crash_path}]")
-            mailto = f"mailto:{CRASH_EMAIL}?subject={subject}&body={short_body}"
-            if platform.system() == "Darwin":
-                subprocess.Popen(["open", mailto])
-            elif platform.system() == "Windows":
-                os.startfile(mailto)
-            self._log(f"📧 Crash report ready — mail client opened. Full log: {crash_path}")
+            from proxy_logic import CA_CERT_FILE, install_ca
+            if not CA_CERT_FILE.exists():
+                from mitm import MITMCertManager
+                MITMCertManager()
+            
+            ok = install_ca(CA_CERT_FILE)
+            if ok:
+                from tkinter import messagebox
+                messagebox.showinfo("Certificate Installed", 
+                    "Root Certificate installed successfully!\n\nPlease RESTART your browser for changes to take effect.")
+                self._log("✅ Root Certificate installed.")
+            else:
+                self._log("❌ Certificate installation failed. Please install ca/ca.crt manually.")
         except Exception as e:
-            self._log(f"📧 Crash log saved to {crash_path} (mail client failed: {e})")
+            self._log(f"❌ Cert installation error: {e}")
 
     # ── Proxy Control ─────────────────────────────────────────────────────
     def _start_proxy(self):
