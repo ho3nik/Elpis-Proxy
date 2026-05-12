@@ -50,6 +50,28 @@ If you prefer not to use the terminal, you can use the built-in GUI which includ
 
 ---
 
+## 🛡️ Fixing HTTPS Certificate Errors
+
+If you see "Your connection is not private" or certificate errors while using Elpis, you must install the Root Certificate.
+
+1. Click **"📁 Cert Folder"** in the Elpis app to find `ca.crt`.
+2. **Chrome / Edge / Brave**:
+   - Go to `chrome://settings/security`.
+   - Click **Manage certificates** -> **Trust** -> **Import**.
+   - Select `ca.crt` and follow the prompts.
+   - **RESTART Chrome** completely (Close all windows).
+3. **Firefox**:
+   - Firefox uses its own store. Go to **Settings** -> **Privacy & Security**.
+   - Scroll to **Certificates** -> **View Certificates**.
+   - Under the **Authorities** tab, click **Import**.
+   - Select `ca.crt` and check **"Trust this CA to identify websites"**.
+4. **Android**:
+   - Copy `ca.crt` to your phone.
+   - Go to **Settings** -> **Security** -> **Encryption & credentials** -> **Install a certificate** -> **CA certificate**.
+   - Select `ca.crt` and install.
+
+---
+
 ### Method 2: Manual Terminal Setup
 
 #### 1 - Download project and extract 

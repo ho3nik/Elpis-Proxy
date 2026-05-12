@@ -445,10 +445,16 @@ class ElpisGUI(ctk.CTk):
                 from tkinter import messagebox
                 messagebox.showinfo("Certificate Installed", 
                     "Root Certificate installed to System Keychain!\n\n"
-                    "CHROME USERS:\n"
+                    "CHROME/EDGE USERS:\n"
                     "1. Chrome may need a FULL RESTART.\n"
                     "2. If it still fails, go to chrome://settings/security\n"
-                    "3. Click 'Manage certificates' -> 'Trust' -> 'Import' and select ca.crt.")
+                    "3. Click 'Manage certificates' -> 'Trust' -> 'Import' -> Select ca.crt.\n\n"
+                    "FIREFOX USERS (IMPORTANT):\n"
+                    "Firefox does NOT use the system keychain. You MUST import manually:\n"
+                    "1. Go to Settings -> Privacy & Security.\n"
+                    "2. Scroll to 'Certificates' -> 'View Certificates'.\n"
+                    "3. Click 'Authorities' tab -> 'Import'.\n"
+                    "4. Select 'ca.crt' and check 'Trust this CA to identify websites'.")
                 self._log("✅ Root Certificate installed.")
             else:
                 self._log("❌ Certificate installation failed. Please install ca/ca.crt manually.")
