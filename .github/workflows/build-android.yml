@@ -42,9 +42,7 @@ jobs:
 
     - name: Build Android APK
       run: |
-        # Ensure flet is installed and run the build
-        pip install flet
-        flet build apk --verbose
+        python -m flet build apk --verbose
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
