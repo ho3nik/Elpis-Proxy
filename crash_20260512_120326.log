@@ -1,0 +1,172 @@
+Elpis Crash Report
+Time: 2026-05-12T12:03:26.357044
+OS: Darwin 25.3.0
+Python: 3.13.2 (v3.13.2:4f8bb3947cf, Feb  4 2025, 11:51:10) [Clang 15.0.0 (clang-1500.3.9.4)]
+Errors detected: 10
+
+--- Last 200 log lines ---
+[12:03:23] ✅ Config saved to config.json
+[12:03:23] 🚀 Starting proxy...
+[12:03:23] ╭────────────────────────────────────────────────────────────────────╮
+[12:03:23] │ mhr-cfw            Domain-Fronted GAS-CFW Relay             v2.0.1 │
+[12:03:23] ╰────────────────────────────────────────────────────────────────────╯
+[12:03:23] 12:03:23  • INFO   [Main    ]  DomainFront Tunnel starting (Apps Script relay)
+[12:03:23] 12:03:23  • INFO   [Main    ]  Apps Script relay : SNI=www.google.com → script.google.com
+[12:03:23] 12:03:23  • INFO   [Main    ]  Script IDs        : 3 scripts (sticky per-host)
+[12:03:23] 12:03:23  • INFO   [Main    ]    [1] AKfycbzv1rbfOD3ExC4cMzl8H-c5mG45DO6bYsw7zOHTKa04VfO9CwWXUSUF9qWY55CgdiEX
+[12:03:23] 12:03:23  • INFO   [Main    ]    [2] AKfycbwMX8fu45NEHL89W5ZAK0kfs1cC03MRsEF0PBAMVIzI4NyE4UMjLlp4EedzrnRYIhKj
+[12:03:23] 12:03:23  • INFO   [Main    ]    [3] AKfycbyF5KEcGHmSPymt6vR1ti5GcOBOAYMy-pNyNkEpP9TQq-vw8v__iBxiExigiBOpeoXq
+[12:03:23] 12:03:23  • INFO   [Main    ]  MITM CA is already trusted.
+[12:03:23] 12:03:23  • INFO   [LAN     ]  LAN HTTP proxy   : 192.168.100.246:8085
+[12:03:23] 12:03:23  • INFO   [LAN     ]  LAN SOCKS5 proxy : 192.168.100.246:1080
+[12:03:23] 12:03:23  • INFO   [Fronter ]  HTTP/2 multiplexing available — all requests will share one connection
+[12:03:23] 12:03:23  • INFO   [Fronter ]  SNI rotation pool (4): www.google.com, mail.google.com, accounts.google.com, scholar.google.com
+[12:03:23] 12:03:23  • INFO   [Fronter ]  Fan-out relay: 2 parallel Apps Script instances per request
+[12:03:23] 12:03:23  • INFO   [Fronter ]  Response codecs: gzip, deflate, br, zstd
+[12:03:23] 12:03:23  • INFO   [Proxy   ]  youtube_via_relay enabled — YouTube routed through relay
+[12:03:23] 12:03:23  • INFO   [MITM    ]  Loaded CA from /Users/khaneapple/.gemini/Elpis/ca
+[12:03:23] Traceback (most recent call last):
+[12:03:23]   File "/Users/khaneapple/.gemini/Elpis/main.py", line 320, in <module>
+[12:03:23]     main()
+[12:03:23]     ~~~~^^
+[12:03:23]   File "/Users/khaneapple/.gemini/Elpis/main.py", line 284, in main
+[12:03:23]     asyncio.run(_run(config))
+[12:03:23]     ~~~~~~~~~~~^^^^^^^^^^^^^^
+[12:03:23]   File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py", line 195, in run
+[12:03:23]     return runner.run(main)
+[12:03:23]            ~~~~~~~~~~^^^^^^
+[12:03:23]   File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py", line 118, in run
+[12:03:23]     return self._loop.run_until_complete(task)
+[12:03:23]            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+[12:03:23]   File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 725, in run_until_complete
+[12:03:23]     return future.result()
+[12:03:23]            ~~~~~~~~~~~~~^^
+[12:03:23]   File "/Users/khaneapple/.gemini/Elpis/main.py", line 314, in _run
+[12:03:23]     await server.start()
+[12:03:23]   File "/Users/khaneapple/.gemini/Elpis/src/proxy_server.py", line 452, in start
+[12:03:23]     http_srv = await asyncio.start_server(self._on_client, self.host, self.port)
+[12:03:23]                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[12:03:23]   File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/streams.py", line 84, in start_server
+[12:03:23]     return await loop.create_server(factory, host, port, **kwds)
+[12:03:23]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[12:03:23]   File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 1622, in create_server
+[12:03:23]     raise OSError(err.errno, msg) from None
+[12:03:23] OSError: [Errno 48] error while attempting to bind on address ('0.0.0.0', 8085): [errno 48] address already in use
+[12:03:23] Proxy exited with code 1
+[12:03:24] ✅ Config saved to config.json
+[12:03:24] 🚀 Starting proxy...
+[12:03:24] ╭────────────────────────────────────────────────────────────────────╮
+[12:03:24] │ mhr-cfw            Domain-Fronted GAS-CFW Relay             v2.0.1 │
+[12:03:24] ╰────────────────────────────────────────────────────────────────────╯
+[12:03:24] 12:03:24  • INFO   [Main    ]  DomainFront Tunnel starting (Apps Script relay)
+[12:03:24] 12:03:24  • INFO   [Main    ]  Apps Script relay : SNI=www.google.com → script.google.com
+[12:03:24] 12:03:24  • INFO   [Main    ]  Script IDs        : 3 scripts (sticky per-host)
+[12:03:24] 12:03:24  • INFO   [Main    ]    [1] AKfycbzv1rbfOD3ExC4cMzl8H-c5mG45DO6bYsw7zOHTKa04VfO9CwWXUSUF9qWY55CgdiEX
+[12:03:24] 12:03:24  • INFO   [Main    ]    [2] AKfycbwMX8fu45NEHL89W5ZAK0kfs1cC03MRsEF0PBAMVIzI4NyE4UMjLlp4EedzrnRYIhKj
+[12:03:24] 12:03:24  • INFO   [Main    ]    [3] AKfycbyF5KEcGHmSPymt6vR1ti5GcOBOAYMy-pNyNkEpP9TQq-vw8v__iBxiExigiBOpeoXq
+[12:03:24] 12:03:24  • INFO   [Main    ]  MITM CA is already trusted.
+[12:03:24] 12:03:24  • INFO   [LAN     ]  LAN HTTP proxy   : 192.168.100.246:8085
+[12:03:24] 12:03:24  • INFO   [LAN     ]  LAN SOCKS5 proxy : 192.168.100.246:1080
+[12:03:24] 12:03:24  • INFO   [Fronter ]  HTTP/2 multiplexing available — all requests will share one connection
+[12:03:24] 12:03:24  • INFO   [Fronter ]  SNI rotation pool (4): www.google.com, mail.google.com, accounts.google.com, scholar.google.com
+[12:03:24] 12:03:24  • INFO   [Fronter ]  Fan-out relay: 2 parallel Apps Script instances per request
+[12:03:24] 12:03:24  • INFO   [Fronter ]  Response codecs: gzip, deflate, br, zstd
+[12:03:24] 12:03:24  • INFO   [Proxy   ]  youtube_via_relay enabled — YouTube routed through relay
+[12:03:24] 12:03:24  • INFO   [MITM    ]  Loaded CA from /Users/khaneapple/.gemini/Elpis/ca
+[12:03:24] Traceback (most recent call last):
+[12:03:24]   File "/Users/khaneapple/.gemini/Elpis/main.py", line 320, in <module>
+[12:03:24]     main()
+[12:03:24]     ~~~~^^
+[12:03:24]   File "/Users/khaneapple/.gemini/Elpis/main.py", line 284, in main
+[12:03:24]     asyncio.run(_run(config))
+[12:03:24]     ~~~~~~~~~~~^^^^^^^^^^^^^^
+[12:03:24]   File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py", line 195, in run
+[12:03:24]     return runner.run(main)
+[12:03:24]            ~~~~~~~~~~^^^^^^
+[12:03:24]   File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py", line 118, in run
+[12:03:24]     return self._loop.run_until_complete(task)
+[12:03:24]            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+[12:03:24]   File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 725, in run_until_complete
+[12:03:24]     return future.result()
+[12:03:24]            ~~~~~~~~~~~~~^^
+[12:03:24]   File "/Users/khaneapple/.gemini/Elpis/main.py", line 314, in _run
+[12:03:24]     await server.start()
+[12:03:24]   File "/Users/khaneapple/.gemini/Elpis/src/proxy_server.py", line 452, in start
+[12:03:24]     http_srv = await asyncio.start_server(self._on_client, self.host, self.port)
+[12:03:24]                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[12:03:24]   File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/streams.py", line 84, in start_server
+[12:03:24]     return await loop.create_server(factory, host, port, **kwds)
+[12:03:24]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[12:03:24]   File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 1622, in create_server
+[12:03:24]     raise OSError(err.errno, msg) from None
+[12:03:24] OSError: [Errno 48] error while attempting to bind on address ('0.0.0.0', 8085): [errno 48] address already in use
+[12:03:24] Proxy exited with code 1
+[12:03:25] ✅ Config saved to config.json
+[12:03:25] 🚀 Starting proxy...
+[12:03:25] ╭────────────────────────────────────────────────────────────────────╮
+[12:03:25] │ mhr-cfw            Domain-Fronted GAS-CFW Relay             v2.0.1 │
+[12:03:25] ╰────────────────────────────────────────────────────────────────────╯
+[12:03:25] 12:03:25  • INFO   [Main    ]  DomainFront Tunnel starting (Apps Script relay)
+[12:03:25] 12:03:25  • INFO   [Main    ]  Apps Script relay : SNI=www.google.com → script.google.com
+[12:03:25] 12:03:25  • INFO   [Main    ]  Script IDs        : 3 scripts (sticky per-host)
+[12:03:25] 12:03:25  • INFO   [Main    ]    [1] AKfycbzv1rbfOD3ExC4cMzl8H-c5mG45DO6bYsw7zOHTKa04VfO9CwWXUSUF9qWY55CgdiEX
+[12:03:25] 12:03:25  • INFO   [Main    ]    [2] AKfycbwMX8fu45NEHL89W5ZAK0kfs1cC03MRsEF0PBAMVIzI4NyE4UMjLlp4EedzrnRYIhKj
+[12:03:25] 12:03:25  • INFO   [Main    ]    [3] AKfycbyF5KEcGHmSPymt6vR1ti5GcOBOAYMy-pNyNkEpP9TQq-vw8v__iBxiExigiBOpeoXq
+[12:03:25] 12:03:25  • INFO   [Main    ]  MITM CA is already trusted.
+[12:03:25] 12:03:25  • INFO   [LAN     ]  LAN HTTP proxy   : 192.168.100.246:8085
+[12:03:25] 12:03:25  • INFO   [LAN     ]  LAN SOCKS5 proxy : 192.168.100.246:1080
+[12:03:25] 12:03:25  • INFO   [Fronter ]  HTTP/2 multiplexing available — all requests will share one connection
+[12:03:25] 12:03:25  • INFO   [Fronter ]  SNI rotation pool (4): www.google.com, mail.google.com, accounts.google.com, scholar.google.com
+[12:03:25] 12:03:25  • INFO   [Fronter ]  Fan-out relay: 2 parallel Apps Script instances per request
+[12:03:25] 12:03:25  • INFO   [Fronter ]  Response codecs: gzip, deflate, br, zstd
+[12:03:25] 12:03:25  • INFO   [Proxy   ]  youtube_via_relay enabled — YouTube routed through relay
+[12:03:25] 12:03:25  • INFO   [MITM    ]  Loaded CA from /Users/khaneapple/.gemini/Elpis/ca
+[12:03:25] Traceback (most recent call last):
+[12:03:25]   File "/Users/khaneapple/.gemini/Elpis/main.py", line 320, in <module>
+[12:03:25]     main()
+[12:03:25]     ~~~~^^
+[12:03:25]   File "/Users/khaneapple/.gemini/Elpis/main.py", line 284, in main
+[12:03:25]     asyncio.run(_run(config))
+[12:03:25]     ~~~~~~~~~~~^^^^^^^^^^^^^^
+[12:03:25]   File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py", line 195, in run
+[12:03:25]     return runner.run(main)
+[12:03:25]            ~~~~~~~~~~^^^^^^
+[12:03:25]   File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py", line 118, in run
+[12:03:25]     return self._loop.run_until_complete(task)
+[12:03:25]            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+[12:03:25]   File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 725, in run_until_complete
+[12:03:25]     return future.result()
+[12:03:25]            ~~~~~~~~~~~~~^^
+[12:03:25]   File "/Users/khaneapple/.gemini/Elpis/main.py", line 314, in _run
+[12:03:25]     await server.start()
+[12:03:25]   File "/Users/khaneapple/.gemini/Elpis/src/proxy_server.py", line 452, in start
+[12:03:25]     http_srv = await asyncio.start_server(self._on_client, self.host, self.port)
+[12:03:25]                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[12:03:25]   File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/streams.py", line 84, in start_server
+[12:03:25]     return await loop.create_server(factory, host, port, **kwds)
+[12:03:25]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[12:03:25]   File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 1622, in create_server
+[12:03:25]     raise OSError(err.errno, msg) from None
+[12:03:25] OSError: [Errno 48] error while attempting to bind on address ('0.0.0.0', 8085): [errno 48] address already in use
+[12:03:25] Proxy exited with code 1
+[12:03:26] ✅ Config saved to config.json
+[12:03:26] 🚀 Starting proxy...
+[12:03:26] ╭────────────────────────────────────────────────────────────────────╮
+[12:03:26] │ mhr-cfw            Domain-Fronted GAS-CFW Relay             v2.0.1 │
+[12:03:26] ╰────────────────────────────────────────────────────────────────────╯
+[12:03:26] 12:03:26  • INFO   [Main    ]  DomainFront Tunnel starting (Apps Script relay)
+[12:03:26] 12:03:26  • INFO   [Main    ]  Apps Script relay : SNI=www.google.com → script.google.com
+[12:03:26] 12:03:26  • INFO   [Main    ]  Script IDs        : 3 scripts (sticky per-host)
+[12:03:26] 12:03:26  • INFO   [Main    ]    [1] AKfycbzv1rbfOD3ExC4cMzl8H-c5mG45DO6bYsw7zOHTKa04VfO9CwWXUSUF9qWY55CgdiEX
+[12:03:26] 12:03:26  • INFO   [Main    ]    [2] AKfycbwMX8fu45NEHL89W5ZAK0kfs1cC03MRsEF0PBAMVIzI4NyE4UMjLlp4EedzrnRYIhKj
+[12:03:26] 12:03:26  • INFO   [Main    ]    [3] AKfycbyF5KEcGHmSPymt6vR1ti5GcOBOAYMy-pNyNkEpP9TQq-vw8v__iBxiExigiBOpeoXq
+[12:03:26] 12:03:26  • INFO   [Main    ]  MITM CA is already trusted.
+[12:03:26] 12:03:26  • INFO   [LAN     ]  LAN HTTP proxy   : 192.168.100.246:8085
+[12:03:26] 12:03:26  • INFO   [LAN     ]  LAN SOCKS5 proxy : 192.168.100.246:1080
+[12:03:26] 12:03:26  • INFO   [Fronter ]  HTTP/2 multiplexing available — all requests will share one connection
+[12:03:26] 12:03:26  • INFO   [Fronter ]  SNI rotation pool (4): www.google.com, mail.google.com, accounts.google.com, scholar.google.com
+[12:03:26] 12:03:26  • INFO   [Fronter ]  Fan-out relay: 2 parallel Apps Script instances per request
+[12:03:26] 12:03:26  • INFO   [Fronter ]  Response codecs: gzip, deflate, br, zstd
+[12:03:26] 12:03:26  • INFO   [Proxy   ]  youtube_via_relay enabled — YouTube routed through relay
+[12:03:26] 12:03:26  • INFO   [MITM    ]  Loaded CA from /Users/khaneapple/.gemini/Elpis/ca
+[12:03:26] Traceback (most recent call last):
