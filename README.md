@@ -42,6 +42,9 @@ If you prefer not to use the terminal, you can use the built-in GUI which includ
 
 - **Windows Users (Easiest Method):** 
   Go to the **Actions** tab on your GitHub repository, click on the latest successful "Build Windows EXE" workflow, and download the `Elpis-Windows-EXE` artifact at the bottom. This is a single, standalone file that requires zero installation!
+- **Android Users:**
+  Go to the **Actions** tab on your GitHub repository, click on the latest "Build Android APK" workflow, and download the `Elpis-Android-APK` artifact. Install the APK on your phone.
+  *Note: You will need to manually set your WiFi Proxy to 127.0.0.1:8080 to route traffic.*
 - **Mac Users:**
   Download the project, open the folder, and double-click `Elpis.command`. It will automatically install requirements and launch the GUI.
 
