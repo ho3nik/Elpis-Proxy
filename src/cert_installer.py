@@ -361,23 +361,22 @@ def _install_firefox(cert_path: str, cert_name: str):
                 ])
                 log.info("Installed in Firefox NSS DB: %s", os.path.basename(profile))
             
-            # Enable system root trust in Firefox
-            prefs_js = os.path.join(profile, "prefs.js")
+            # Enable system root trust in Firefox via user.js
+            # (user.js is safer than prefs.js because it's not overwritten by the browser on exit)
+            user_js = os.path.join(profile, "user.js")
             pref_line = 'user_pref("security.enterprise_roots.enabled", true);'
             try:
-                if os.path.exists(prefs_js):
-                    with open(prefs_js, "r") as f:
-                        lines = f.readlines()
-                    if not any("security.enterprise_roots.enabled" in line for line in lines):
-                        with open(prefs_js, "a") as f:
-                            f.write(f"\n{pref_line}\n")
-                        log.info("Enabled system root trust in Firefox profile: %s", os.path.basename(profile))
-                else:
-                    with open(prefs_js, "w") as f:
-                        f.write(f"{pref_line}\n")
-                    log.info("Created prefs.js with system root trust in Firefox profile: %s", os.path.basename(profile))
+                content = ""
+                if os.path.exists(user_js):
+                    with open(user_js, "r") as f:
+                        content = f.read()
+                
+                if "security.enterprise_roots.enabled" not in content:
+                    with open(user_js, "a") as f:
+                        f.write(f"\n{pref_line}\n")
+                    log.info("Enabled system root trust in Firefox profile: %s (via user.js)", os.path.basename(profile))
             except Exception as e:
-                log.warning("Failed to set Firefox pref: %s", e)
+                log.warning("Failed to set Firefox user.js pref: %s", e)
 
             log.info("Completed Firefox profile setup: %s", os.path.basename(profile))
         except (subprocess.CalledProcessError, FileNotFoundError) as exc:
