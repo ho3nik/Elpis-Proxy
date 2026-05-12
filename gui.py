@@ -443,7 +443,7 @@ class ElpisGUI(ctk.CTk):
             from proxy_logic import install_ca
             from mitm import CA_CERT_FILE, MITMCertManager
             
-            if not CA_CERT_FILE.exists():
+            if not os.path.exists(CA_CERT_FILE):
                 MITMCertManager()
             
             ok = install_ca(CA_CERT_FILE)
@@ -669,6 +669,12 @@ class ElpisGUI(ctk.CTk):
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
+    
+    # Redirection for windowless EXE
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w")
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w")
     
     # Auto-install dependencies before GUI opens (only if not frozen)
     if not getattr(sys, 'frozen', False):

@@ -181,6 +181,8 @@ def configure(level: str = "INFO", *, stream=None) -> None:
     module and leaves unrelated handlers alone (for tests / embedding).
     """
     stream = stream or sys.stderr
+    if stream is None:
+        return
     use_color = _supports_color(stream)
 
     handler = logging.StreamHandler(stream)
@@ -229,6 +231,8 @@ def _install_asyncio_noise_filter() -> None:
 def print_banner(version: str, *, stream=None) -> None:
     """Print a polished startup banner with color fallbacks."""
     stream = stream or sys.stderr
+    if stream is None:
+        return
     color = _supports_color(stream)
 
     def c(code: str) -> str:
@@ -267,4 +271,7 @@ def print_banner(version: str, *, stream=None) -> None:
     print(top, file=stream)
     print(mid, file=stream)
     print(bot, file=stream)
-    stream.flush()
+    try:
+        stream.flush()
+    except Exception:
+        pass
