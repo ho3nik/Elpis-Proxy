@@ -10,19 +10,14 @@ import os
 import sys
 import signal
 import queue
-import smtplib
 import traceback
 import multiprocessing
-import smtplib
-import traceback
 import urllib.parse
 import subprocess
 import threading
 import platform
 from pathlib import Path
 from datetime import datetime
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from tkinter import filedialog
 import customtkinter as ctk
 

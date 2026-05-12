@@ -16,7 +16,12 @@ import sys
 
 # Project modules live under ./src — put that folder on sys.path so the
 # historical flat imports ("from proxy_server import …") keep working.
-_SRC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src")
+if getattr(sys, 'frozen', False):
+    _BASE_DIR = sys._MEIPASS
+else:
+    _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+_SRC_DIR = os.path.join(_BASE_DIR, "src")
 if _SRC_DIR not in sys.path:
     sys.path.insert(0, _SRC_DIR)
 
