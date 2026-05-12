@@ -23,6 +23,12 @@ jobs:
         pip install flet
         pip install -r requirements_mobile.txt
 
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
     - name: Set up Flutter
       uses: subosito/flutter-action@v2
       with:
@@ -31,9 +37,7 @@ jobs:
 
     - name: Build Android APK
       run: |
-        # Flet build requires some environment setup
-        # We build a debug APK for easy testing
-        flet build apk --main mobile_gui.py --project ElpisMobile --product Elpis
+        flet build apk --verbose --main mobile_gui.py
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
