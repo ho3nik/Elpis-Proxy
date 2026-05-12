@@ -1,0 +1,42 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Flet and Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flet
+        pip install -r requirements_mobile.txt
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.19.0'
+        channel: 'stable'
+
+    - name: Build Android APK
+      run: |
+        # Flet build requires some environment setup
+        # We build a debug APK for easy testing
+        flet build apk --main mobile_gui.py --project ElpisMobile --product Elpis
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: Elpis-Android-APK
+        path: build/apk/*.apk

@@ -1,0 +1,7 @@
+flet
+aiohttp
+cryptography
+h2
+brotli
+zstandard
+pyOpenSSL
