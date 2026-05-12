@@ -40,6 +40,11 @@ jobs:
         flutter-version: '3.19.0'
         channel: 'stable'
 
+    - name: Prepare Requirements for Flet
+      run: |
+        mv requirements.txt requirements_desktop.txt
+        cp requirements_mobile.txt requirements.txt
+
     - name: Build Android APK
       run: |
         python -m flet build apk --verbose
