@@ -16,6 +16,9 @@ import multiprocessing
 import smtplib
 import traceback
 import urllib.parse
+import subprocess
+import threading
+import platform
 from pathlib import Path
 from datetime import datetime
 from email.mime.text import MIMEText
@@ -80,7 +83,7 @@ def _auto_install_deps():
     except Exception:
         pass
 
-# ── Theme ─────────────────────────────────────────────────────────────────
+# ── Theme ────────────────────────────────────────────────────────────────
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
@@ -196,7 +199,7 @@ class ElpisGUI(ctk.CTk):
                 else:
                     self.config[key] = val
 
-    # ── UI Build ──────────────────────────────────────────────────────────
+    # ── UI Build ─────────────────────────────────────────────────────────
     def _build_ui(self):
         # Top bar
         top = ctk.CTkFrame(self, fg_color=BG_CARD, height=56, corner_radius=0)
@@ -377,7 +380,7 @@ class ElpisGUI(ctk.CTk):
             tb.insert("1.0", str(val))
         self.fields[key] = tb
 
-    # ── Logging ───────────────────────────────────────────────────────────
+    # ── Logging ──────────────────────────────────────────────────────────
     def _log(self, msg):
         ts = datetime.now().strftime("%H:%M:%S")
         entry = f"[{ts}] {msg}"
@@ -502,23 +505,37 @@ class ElpisGUI(ctk.CTk):
         self._log("🚀 Starting proxy...")
         try:
             if getattr(sys, 'frozen', False):
-                # If bundled, we run the SAME EXE but with the --backend flag
-                cmd = [sys.executable, "--backend"]
-                # We need to ensure proxy_logic.py logic is available to the EXE main block
+                # If bundled as EXE, run proxy_logic directly in a separate thread
+                # instead of spawning the EXE again (which would cause infinite loop)
+                threading.Thread(target=self._run_proxy_backend, daemon=False).start()
             else:
                 cmd = [self.python_exe, str(MAIN_SCRIPT)]
                 
-            self.proxy_process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                cwd=str(HERE), bufsize=1, text=True,
-            )
+                self.proxy_process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    cwd=str(HERE), bufsize=1, text=True,
+                )
+                self.start_btn.configure(state="disabled")
+                self.stop_btn.configure(state="normal")
+                self.status_label.configure(text="● Running", text_color=SUCCESS)
+                threading.Thread(target=self._read_output, daemon=True).start()
+        except Exception as e:
+            self._log(f"❌ Failed to start: {e}")
+
+    def _run_proxy_backend(self):
+        """Run proxy_logic.main() in a thread (for bundled EXE mode)."""
+        try:
             self.start_btn.configure(state="disabled")
             self.stop_btn.configure(state="normal")
             self.status_label.configure(text="● Running", text_color=SUCCESS)
-            threading.Thread(target=self._read_output, daemon=True).start()
+            
+            import proxy_logic
+            proxy_logic.main()
         except Exception as e:
-            self._log(f"❌ Failed to start: {e}")
+            self._log(f"❌ Proxy error: {e}\n{traceback.format_exc()}")
+        finally:
+            self._on_proxy_stopped()
 
     def _read_output(self):
         proc = self.proxy_process
@@ -640,15 +657,7 @@ class ElpisGUI(ctk.CTk):
 if __name__ == "__main__":
     multiprocessing.freeze_support()
     
-    # Check if we should run as backend
-    if "--backend" in sys.argv:
-        try:
-            proxy_logic.main()
-        except NameError:
-            import proxy_logic
-            proxy_logic.main()
-    else:
-        # Auto-install dependencies before GUI opens (only if not frozen)
-        _auto_install_deps()
-        app = ElpisGUI()
-        app.mainloop()
+    # Auto-install dependencies before GUI opens (only if not frozen)
+    _auto_install_deps()
+    app = ElpisGUI()
+    app.mainloop()
