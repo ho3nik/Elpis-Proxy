@@ -455,11 +455,38 @@ class ElpisGUI(ctk.CTk):
             self._log(f"❌ Could not open folder: {e}")
 
     # ── Proxy Control ─────────────────────────────────────────────────────
+    def _kill_port_holders(self, port):
+        """Find and kill any process listening on the specified port."""
+        if not port:
+            return
+        try:
+            if platform.system() == "Darwin" or platform.system() == "Linux":
+                # Use lsof to find PID and kill -9
+                cmd = f"lsof -ti:{port} | xargs kill -9"
+                subprocess.run(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            elif platform.system() == "Windows":
+                # Use netstat and taskkill
+                cmd = f'for /f "tokens=5" %a in (\'netstat -aon ^| findstr :{port} ^| findstr LISTENING\') do taskkill /f /pid %a'
+                subprocess.run(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            self._log(f"⚡ Cleared any processes on port {port}")
+        except Exception:
+            pass
+
     def _start_proxy(self):
         if self.proxy_process and self.proxy_process.poll() is None:
             self._log("⚠️  Proxy is already running.")
             return
         self._save_config()
+        
+        # 1. Kill any existing port holders (HTTP and SOCKS)
+        self._kill_port_holders(self.config.get("listen_port", 8080))
+        if self.config.get("socks5_enabled", True):
+            self._kill_port_holders(self.config.get("socks5_port", 1080))
+
+        # 2. Auto-install certificate
+        self._install_cert()
+
+        # 3. Start proxy process
         self._log("🚀 Starting proxy...")
         try:
             self.proxy_process = subprocess.Popen(

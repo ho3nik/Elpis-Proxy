@@ -112,6 +112,15 @@ def main(page: ft.Page):
         try:
             is_running = True
             update_status_ui()
+
+            # 1. Kill any existing port holders (for Mac/Windows testing)
+            kill_port_holders(config.get("listen_port", 8080))
+            if config.get("socks5_enabled", True):
+                kill_port_holders(config.get("socks5_port", 1080))
+
+            # 2. Auto-install certificate (Desktop platforms)
+            install_cert_mobile()
+
             append_log("🚀 Starting proxy...")
             await run_proxy_internal(config)
         except Exception as e:
@@ -137,6 +146,33 @@ def main(page: ft.Page):
         link = f"tg://socks?server=127.0.0.1&port={port}"
         page.set_clipboard(link)
         page.show_snack_bar(ft.SnackBar(ft.Text(f"Copied: {link}")))
+
+    def kill_port_holders(port):
+        """Find and kill any process listening on the specified port (Desktop only)."""
+        import subprocess
+        try:
+            if platform.system() == "Darwin" or platform.system() == "Linux":
+                cmd = f"lsof -ti:{port} | xargs kill -9"
+                subprocess.run(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            elif platform.system() == "Windows":
+                cmd = f'for /f "tokens=5" %a in (\'netstat -aon ^| findstr :{port} ^| findstr LISTENING\') do taskkill /f /pid %a'
+                subprocess.run(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            append_log(f"⚡ Cleared port {port}")
+        except:
+            pass
+
+    def install_cert_mobile():
+        """Attempt to install CA on Desktop platforms."""
+        if platform.system() in ["Darwin", "Windows"]:
+            try:
+                from proxy_logic import CA_CERT_FILE, install_ca
+                if not CA_CERT_FILE.exists():
+                    from mitm import MITMCertManager
+                    MITMCertManager()
+                if install_ca(CA_CERT_FILE):
+                    append_log("✅ Root Certificate trusted.")
+            except:
+                pass
 
     def update_status_ui():
         status_dot.color = ft.colors.GREEN if is_running else ft.colors.RED
