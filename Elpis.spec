@@ -6,7 +6,40 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[('src', 'src'), ('config.json', '.'), ('ca', 'ca')],
-    hiddenimports=[],
+    hiddenimports=[
+        # Core dependencies
+        'cryptography',
+        'cryptography.hazmat',
+        'cryptography.hazmat.backends',
+        'cryptography.hazmat.backends.openssl',
+        'cryptography.hazmat.primitives',
+        'cryptography.hazmat.primitives.asymmetric',
+        'cryptography.hazmat.primitives.ciphers',
+        'cryptography.hazmat.primitives.hashes',
+        'cryptography.hazmat.primitives.kdf',
+        'cryptography.hazmat.primitives.serialization',
+        'cryptography.x509',
+        'cryptography.x509.oid',
+        
+        # Optional compression & HTTP/2
+        'h2',
+        'brotli',
+        'zstandard',
+        
+        # GUI
+        'customtkinter',
+        'tkinter',
+        
+        # Core proxy modules
+        'proxy_logic',
+        'mitm',
+        'proxy_server',
+        'cert_installer',
+        'constants',
+        'lan_utils',
+        'google_ip_scanner',
+        'logging_utils',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
